@@ -26,8 +26,27 @@ public class ReportController {
     public String dashboard(Model model) {
         long totalItems = stockItemRepository.count();
         int lowStockCount = stockItemRepository.findByQuantityLessThan(10).size();
+
+        // CALCULATE TOTAL VALUE AND CATEGORIES
+        double totalValue = 0.0;
+        List<StockItem> allItems = stockItemRepository.findAll();
+
+        for (StockItem item : allItems) {
+            if (item.getPrice() != null && item.getQuantity() != null) {
+                totalValue += item.getPrice() * item.getQuantity();
+            }
+        }
+
+        long totalCategories = allItems.stream()
+                .map(StockItem::getCategory)
+                .distinct()
+                .count();
+
         model.addAttribute("totalItems", totalItems);
         model.addAttribute("lowStockItems", lowStockCount);
+        model.addAttribute("totalValue", totalValue);
+        model.addAttribute("totalCategories", totalCategories);
+
         return "dashboard";
     }
 
@@ -48,9 +67,9 @@ public class ReportController {
 
     @PostMapping("/add-item")
     public String addItem(@Valid @ModelAttribute StockItem stockItem,
-                          BindingResult result, Model model) {  // ← ADD @Valid and BindingResult
+                          BindingResult result, Model model) {
         if (result.hasErrors()) {
-            return "add-item-form"; // Return to form with error messages
+            return "add-item-form";
         }
         stockItemRepository.save(stockItem);
         return "redirect:/items";
@@ -70,17 +89,17 @@ public class ReportController {
                              @Valid @ModelAttribute StockItem item,
                              BindingResult result) {
         if (result.hasErrors()) {
-            return "edit-item-form"; // Return to form with error messages
+            return "edit-item-form";
         }
         item.setId(id);
         stockItemRepository.save(item);
         return "redirect:/items";
     }
+
     // === DELETE ITEM ===
     @GetMapping("/delete/{id}")
     public String deleteItem(@PathVariable Long id) {
         try {
-            // Check if item exists before deleting
             if (stockItemRepository.existsById(id)) {
                 stockItemRepository.deleteById(id);
             } else {
@@ -112,16 +131,13 @@ public class ReportController {
         return "charts";
     }
 
-    // === ADD THESE API ENDPOINTS RIGHT HERE ===
-
-    // Test endpoint
+    // === API ENDPOINTS ===
     @GetMapping("/test")
     @ResponseBody
     public String test() {
         return "API is working!";
     }
 
-    // Dashboard data API
     @GetMapping("/api/dashboard")
     @ResponseBody
     public Map<String, Object> getDashboardData() {
@@ -130,7 +146,6 @@ public class ReportController {
         long totalItems = stockItemRepository.count();
         int lowStockCount = stockItemRepository.findByQuantityLessThan(10).size();
 
-        // Calculate total stock value
         Double totalValue = stockItemRepository.findAll().stream()
                 .mapToDouble(item -> item.getQuantity() * item.getPrice())
                 .sum();
@@ -138,25 +153,48 @@ public class ReportController {
         data.put("totalItems", totalItems);
         data.put("lowStockItems", lowStockCount);
         data.put("totalStockValue", totalValue != null ? totalValue : 0.0);
-        data.put("totalSales", 0); // You'll need to implement this
-        data.put("totalRevenue", 0.0); // You'll need to implement this
+        data.put("totalSales", 0);
+        data.put("totalRevenue", 0.0);
         data.put("period", "Live Database");
 
         return data;
     }
 
-    // All stock items API
     @GetMapping("/api/stock-items")
     @ResponseBody
     public List<StockItem> getAllStockItems() {
         return stockItemRepository.findAll();
     }
 
-    // Low stock API
     @GetMapping("/api/low-stock")
     @ResponseBody
     public List<StockItem> getLowStock() {
         return stockItemRepository.findByQuantityLessThan(10);
     }
 
+    @GetMapping("/debug-charts")
+    @ResponseBody
+    public String debugCharts() {
+        List<Object[]> quantityData = stockItemRepository.findQuantityByCategory();
+        List<Object[]> valueData = stockItemRepository.findTotalValueByCategory();
+
+        StringBuilder debug = new StringBuilder();
+        debug.append("<h3>Chart Data Debug</h3>");
+
+        debug.append("<h4>Quantity Data:</h4>");
+        for (Object[] data : quantityData) {
+            debug.append("Category: ").append(data[0])
+                    .append(", Total Quantity: ").append(data[1])
+                    .append("<br>");
+        }
+
+        debug.append("<h4>Value Data:</h4>");
+        for (Object[] data : valueData) {
+            debug.append("Category: ").append(data[0])
+                    .append(", Total Value: ").append(data[1])
+                    .append("<br>");
+        }
+
+        return debug.toString();
+    }
 }

@@ -89,7 +89,7 @@
                             <div class="row">
                                 <div class="col-8">
                                     <h5>Categories</h5>
-                                    <h2>3</h2>
+                                    <h2 th:text="${totalCategories}">0</h2>
                                 </div>
                                 <div class="col-4 text-end">
                                     <i class="bi bi-tags display-4 opacity-50"></i>
@@ -104,7 +104,7 @@
                             <div class="row">
                                 <div class="col-8">
                                     <h5>Total Value</h5>
-                                    <h2>$12,459</h2>
+                                    <h2 th:text="'$' + ${#numbers.formatDecimal(totalValue, 1, 2)}">$0.00</h2>
                                 </div>
                                 <div class="col-4 text-end">
                                     <i class="bi bi-currency-dollar display-4 opacity-50"></i>

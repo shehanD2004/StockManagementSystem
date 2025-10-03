@@ -52,6 +52,23 @@
         <h1 class="h2"><i class="bi bi-bar-chart"></i> Stock Analytics</h1>
       </div>
 
+      <!-- Debug Info (Temporary - Remove after charts work) -->
+      <div class="alert alert-info" role="alert">
+        <h6>Debug Information:</h6>
+        <div th:if="${quantityData != null and !quantityData.empty}">
+          <strong>Quantity Data Found:</strong> <span th:text="${quantityData.size()}"></span> categories
+        </div>
+        <div th:if="${quantityData == null or quantityData.empty}">
+          <strong class="text-danger">No Quantity Data Available</strong>
+        </div>
+        <div th:if="${valueData != null and !valueData.empty}">
+          <strong>Value Data Found:</strong> <span th:text="${valueData.size()}"></span> categories
+        </div>
+        <div th:if="${valueData == null or valueData.empty}">
+          <strong class="text-danger">No Value Data Available</strong>
+        </div>
+      </div>
+
       <div class="row">
         <!-- Quantity by Category Chart -->
         <div class="col-md-6 mb-4">
@@ -61,6 +78,10 @@
             </div>
             <div class="card-body">
               <canvas id="quantityChart" width="400" height="300"></canvas>
+              <div th:if="${quantityData == null or quantityData.empty}" class="text-center py-4">
+                <i class="bi bi-bar-chart display-4 text-muted"></i>
+                <p class="text-muted mt-2">No quantity data available for chart</p>
+              </div>
             </div>
           </div>
         </div>
@@ -73,6 +94,10 @@
             </div>
             <div class="card-body">
               <canvas id="valueChart" width="400" height="300"></canvas>
+              <div th:if="${valueData == null or valueData.empty}" class="text-center py-4">
+                <i class="bi bi-pie-chart display-4 text-muted"></i>
+                <p class="text-muted mt-2">No value data available for chart</p>
+              </div>
             </div>
           </div>
         </div>
@@ -86,7 +111,7 @@
               <h5 class="card-title mb-0">Category Summary</h5>
             </div>
             <div class="card-body">
-              <div class="table-responsive">
+              <div th:if="${quantityData != null and !quantityData.empty}" class="table-responsive">
                 <table class="table table-striped">
                   <thead>
                   <tr>
@@ -98,13 +123,16 @@
                   </thead>
                   <tbody>
                   <tr th:each="quantity,iter : ${quantityData}">
-                    <td th:text="${quantity[0]}"></td>
-                    <td th:text="${quantity[1]}"></td>
-                    <td th:text="'$' + ${#numbers.formatDecimal(valueData[iter.index][1], 1, 2)}"></td>
-                    <td th:text="${@stockItemRepository.findByCategory(quantity[0]).size()}"></td>
+                    <td th:text="${quantity[0]}">Category</td>
+                    <td th:text="${quantity[1]}">0</td>
+                    <td th:text="'$' + ${#numbers.formatDecimal(valueData[iter.index][1], 1, 2)}">$0.00</td>
+                    <td th:text="${@stockItemRepository.findByCategory(quantity[0]).size()}">0</td>
                   </tr>
                   </tbody>
                 </table>
+              </div>
+              <div th:if="${quantityData == null or quantityData.empty}" class="text-center py-4">
+                <p class="text-muted">No data available for summary table</p>
               </div>
             </div>
           </div>
@@ -116,48 +144,148 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
+<!-- Use Thymeleaf to pass data to JavaScript -->
+<script th:inline="javascript">
+  /*<![CDATA[*/
+
+  // Get data from Thymeleaf safely
+  const quantityData = /*[[${quantityData}]]*/ [];
+  const valueData = /*[[${valueData}]]*/ [];
+
+  console.log('Quantity Data:', quantityData);
+  console.log('Value Data:', valueData);
+
+  /*]]>*/
+</script>
+
 <script>
-  // Quantity Chart
-  const quantityCtx = document.getElementById('quantityChart').getContext('2d');
-  const quantityChart = new Chart(quantityCtx, {
-    type: 'bar',
-    data: {
-      labels: [<th:block th:each="data : ${quantityData}">'<th:block th:text="${data[0]}"/>',</th:block>],
-      datasets: [{
-        label: 'Stock Quantity',
-        data: [<th:block th:each="data : ${quantityData}"><th:block th:text="${data[1]}"/>,</th:block>],
-        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
-        borderColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: true },
-        title: { display: true, text: 'Stock Quantity Distribution' }
+  // Wait for the page to fully load
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, initializing charts...');
+
+    // Process data for charts
+    const quantityLabels = quantityData.map(item => item[0] || 'Unknown');
+    const quantityValues = quantityData.map(item => item[1] || 0);
+
+    const valueLabels = valueData.map(item => item[0] || 'Unknown');
+    const valueValues = valueData.map(item => item[1] || 0);
+
+    console.log('Processed Quantity Labels:', quantityLabels);
+    console.log('Processed Quantity Values:', quantityValues);
+    console.log('Processed Value Labels:', valueLabels);
+    console.log('Processed Value Values:', valueValues);
+
+    // Initialize Quantity Chart (Bar Chart)
+    const quantityCtx = document.getElementById('quantityChart');
+    if (quantityCtx && quantityLabels.length > 0 && quantityValues.length > 0) {
+      try {
+        const quantityChart = new Chart(quantityCtx, {
+          type: 'bar',
+          data: {
+            labels: quantityLabels,
+            datasets: [{
+              label: 'Stock Quantity',
+              data: quantityValues,
+              backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
+              borderColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top'
+              },
+              title: {
+                display: true,
+                text: 'Stock Quantity by Category',
+                font: { size: 16 }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Quantity'
+                }
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: 'Categories'
+                }
+              }
+            }
+          }
+        });
+        console.log('Quantity chart initialized successfully');
+      } catch (error) {
+        console.error('Error initializing quantity chart:', error);
+        quantityCtx.getContext('2d').fillText('Error loading chart', 10, 50);
+      }
+    } else {
+      console.warn('No quantity data available for chart');
+      if (quantityCtx) {
+        quantityCtx.getContext('2d').fillText('No data available', 10, 50);
       }
     }
-  });
 
-  // Value Chart
-  const valueCtx = document.getElementById('valueChart').getContext('2d');
-  const valueChart = new Chart(valueCtx, {
-    type: 'pie',
-    data: {
-      labels: [<th:block th:each="data : ${valueData}">'<th:block th:text="${data[0]}"/>',</th:block>],
-      datasets: [{
-        label: 'Total Value ($)',
-        data: [<th:block th:each="data : ${valueData}"><th:block th:text="${#numbers.formatDecimal(data[1], 1, 2)}"/>,</th:block>],
-        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
-        borderWidth: 1
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { position: 'right' },
-        title: { display: true, text: 'Stock Value Distribution' }
+    // Initialize Value Chart (Pie Chart)
+    const valueCtx = document.getElementById('valueChart');
+    if (valueCtx && valueLabels.length > 0 && valueValues.length > 0) {
+      try {
+        const valueChart = new Chart(valueCtx, {
+          type: 'pie',
+          data: {
+            labels: valueLabels,
+            datasets: [{
+              label: 'Total Value ($)',
+              data: valueValues,
+              backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'],
+              borderWidth: 2,
+              borderColor: '#ffffff'
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  padding: 20
+                }
+              },
+              title: {
+                display: true,
+                text: 'Stock Value Distribution ($)',
+                font: { size: 16 }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const label = context.label || '';
+                    const value = context.raw || 0;
+                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                    const percentage = Math.round((value / total) * 100);
+                    return `${label}: $${value.toLocaleString()} (${percentage}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+        console.log('Value chart initialized successfully');
+      } catch (error) {
+        console.error('Error initializing value chart:', error);
+        valueCtx.getContext('2d').fillText('Error loading chart', 10, 50);
+      }
+    } else {
+      console.warn('No value data available for chart');
+      if (valueCtx) {
+        valueCtx.getContext('2d').fillText('No data available', 10, 50);
       }
     }
   });
