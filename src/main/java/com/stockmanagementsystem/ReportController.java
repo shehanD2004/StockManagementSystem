@@ -1,5 +1,8 @@
 package com.stockmanagementsystem;
 
+import com.stockmanagementsystem.strategy.CsvReportStrategy;
+import com.stockmanagementsystem.strategy.ReportContext;
+import com.stockmanagementsystem.strategy.TextReportStrategy;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -11,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 import java.util.List;
 import java.util.HashMap;
@@ -265,5 +269,54 @@ public class ReportController {
         }
 
         return debug.toString();
+    }
+    // Add this autowired field
+    @Autowired
+    private ReportContext reportContext;
+
+// === STRATEGY PATTERN ENDPOINTS ===
+
+    @GetMapping("/reports")
+    public String showReportsPage(Model model) {
+        model.addAttribute("currentFormat", reportContext.getCurrentStrategyName());
+        return "reports";
+    }
+
+    @PostMapping("/reports/set-format")
+    public String setReportFormat(@RequestParam String format) {
+        switch (format.toUpperCase()) {
+            case "TEXT":
+                reportContext.setReportStrategy(new TextReportStrategy());
+                break;
+            case "CSV":
+                reportContext.setReportStrategy(new CsvReportStrategy());
+                break;
+            default:
+                // Keep current strategy
+                break;
+        }
+        return "redirect:/reports";
+    }
+
+    @GetMapping("/reports/generate")
+    public ResponseEntity<byte[]> generateStrategyReport() {
+        List<StockItem> items = stockItemRepository.findAll();
+        String reportContent = reportContext.generateReport(items);
+
+        String filename = "stock-report-" + java.time.LocalDate.now() +
+                getFileExtension(reportContext.getCurrentStrategyName());
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "text/plain")
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .body(reportContent.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String getFileExtension(String format) {
+        switch (format.toUpperCase()) {
+            case "CSV": return ".csv";
+            case "TEXT":
+            default: return ".txt";
+        }
     }
 }
