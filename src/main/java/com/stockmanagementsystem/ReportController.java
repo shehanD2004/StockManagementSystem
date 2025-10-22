@@ -6,6 +6,11 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import com.itextpdf.text.DocumentException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import java.io.IOException;
 
 import java.util.List;
 import java.util.HashMap;
@@ -129,6 +134,70 @@ public class ReportController {
         model.addAttribute("quantityData", quantityData);
         model.addAttribute("valueData", valueData);
         return "charts";
+    }
+    // Add this autowired field
+    @Autowired
+    private PdfExportService pdfExportService;
+
+// === PDF EXPORT ENDPOINTS ===
+
+    @GetMapping("/pdf/stock-report")
+    public ResponseEntity<byte[]> downloadStockReport() {
+        try {
+            byte[] pdfBytes = pdfExportService.generateStockReport();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment",
+                    "stock-report-" + java.time.LocalDate.now() + ".pdf");
+            headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfBytes);
+
+        } catch (DocumentException e) {
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @GetMapping("/pdf/low-stock-report")
+    public ResponseEntity<byte[]> downloadLowStockReport() {
+        try {
+            byte[] pdfBytes = pdfExportService.generateLowStockReport();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment",
+                    "low-stock-alert-" + java.time.LocalDate.now() + ".pdf");
+            headers.setCacheControl("must-revalidate, post-check=0, pre-check=0");
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfBytes);
+
+        } catch (DocumentException e) {
+            return ResponseEntity.status(500).body(null);
+        }
+    }
+
+    @GetMapping("/pdf/view-stock-report")
+    public ResponseEntity<byte[]> viewStockReport() {
+        try {
+            byte[] pdfBytes = pdfExportService.generateStockReport();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("inline",
+                    "stock-report-" + java.time.LocalDate.now() + ".pdf");
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfBytes);
+
+        } catch (DocumentException e) {
+            return ResponseEntity.status(500).body(null);
+        }
     }
 
     // === API ENDPOINTS ===
