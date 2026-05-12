@@ -28,7 +28,6 @@ The project follows a clean layered architecture and demonstrates enterprise-gra
 * [API Testing](#-api-testing)
 * [Error Handling](#-error-handling)
 * [Performance & Scalability](#-performance--scalability)
-* [Future Enhancements](#-future-enhancements)
 * [License](#-license)
 
 ---
